@@ -209,7 +209,12 @@ function render(){
  document.getElementById("backupStatus").innerHTML=lb?`<span class="ok">🟢 Sauvegarde automatique active</span> — dernière copie : ${fmtDate(new Date(lb.savedAt))} à ${fmtTime(new Date(lb.savedAt))} — ${JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]").length} version(s) conservée(s).`:'<span class="warn">🟠 Aucune sauvegarde automatique encore créée</span>';
  if(historyOpen)renderHistory();
 }
-function exportJSON(){download("carnet_HS_sauvegarde.json",new Blob([JSON.stringify(data,null,2)],{type:"application/json"}))}
+function exportJSON(){
+ const out={...data,exported_at:new Date().toISOString(),exported_at_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"full",timeStyle:"medium"}).format(new Date())};
+ out.entries=(data.entries||[]).map(e=>({...e,start_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.start)),end_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.end))}));
+ out.audit=(data.audit||[]).map(a=>({...a,at_local:a.at?new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(a.at)):undefined}));
+ download("carnet_HS_sauvegarde.json",new Blob([JSON.stringify(out,null,2)],{type:"application/json"}))
+}
 function exportCSV(){let csv="ID salarié;Agence;Employeur;Lieu;Chef d'équipe;Date;Début;Fin;Durée;Motif\n";data.entries.slice().reverse().forEach(e=>{let p=e.profile||data.profile;csv+=`"${p.userId}";"${p.agency}";"${p.employer}";"${p.workplace}";"${p.manager}";"${fmtDate(new Date(e.start))}";"${fmtTime(new Date(e.start))}";"${fmtTime(new Date(e.end))}";"${duration(new Date(e.end)-new Date(e.start))}";"${(e.note||"").replaceAll('"','""')}"\n`});download("carnet_HS.csv",new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}))}
 function download(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function resetData(){
