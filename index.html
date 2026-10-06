@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
 <link rel="manifest" href="manifest.json">
-<title>Carnet HS V3.4</title>
+<title>Carnet HS V3.4.1</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827}
 header{background:#111827;color:#fff;padding:17px 14px;text-align:center;position:sticky;top:0;z-index:3}
@@ -24,7 +24,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;borde
 </style>
 </head>
 <body>
-<header><h1>🕐 Carnet HS V3.4</h1><div class="small" style="color:#d1d5db">Suivi personnel des heures supplémentaires</div></header>
+<header><h1>🕐 Carnet HS V3.4.1</h1><div class="small" style="color:#d1d5db">Suivi personnel des heures supplémentaires</div></header>
 <main>
 
 <div class="card">
@@ -69,7 +69,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;borde
 <div class="card">
 <h3>👨‍🏭 Validation du chef d'équipe</h3>
 <div id="validation">Journée non validée</div>
-<button class="secondary" style="width:100%;margin-top:10px" onclick="validateDay()">👨‍🏭 VALIDER PAR LE CHEF D’ÉQUIPE</button><div class="small" style="margin-top:8px">Le chef d’équipe indiqué dans le profil est enregistré avec la date et l’heure de validation.</div>
+<button class="secondary" style="width:100%;margin-top:10px" onclick="validateDay()">👨‍🏭 VALIDER PAR LE CHEF D’ÉQUIPE</button><div class="small" style="margin-top:8px">La validation du chef d’équipe reste disponible à chaque journée terminée. Le chef indiqué dans le profil est enregistré avec la date et l’heure de validation, y compris lorsque la validation est effectuée depuis le compte du salarié.</div>
 </div>
 
 <div class="card">
@@ -117,6 +117,7 @@ const KEY="carnetHS_v3_4";
 const OLD_KEYS=["carnetHS_v3_3","carnetHS_v3_2"];
 const BACKUP_KEY="carnetHS_auto_backups_v1";
 const BACKUP_MAX=10;
+const ACTIVE_KEY="carnetHS_active_v1";
 let data;
 try{
  const current=localStorage.getItem(KEY);
@@ -125,6 +126,7 @@ try{
  localStorage.setItem(KEY,JSON.stringify(data));
 }catch(e){data={profile:{userId:"",agency:"",employer:"",workplace:"",manager:""},entries:[],validations:{},audit:[]}}
 let active=null;
+try{const savedActive=localStorage.getItem(ACTIVE_KEY);active=savedActive?JSON.parse(savedActive):null}catch(e){active=null}
 let historyOpen=false;
 let historyFilter="week";
 
@@ -149,6 +151,7 @@ function startHS(){
  if(!profileOK()){alert("Configure d'abord ton profil.");editProfile();return}
  if(active){alert("Une HS est déjà en cours.");return}
  active={start:new Date().toISOString(),note:val("note"),profile:{...data.profile}};
+ localStorage.setItem(ACTIVE_KEY,JSON.stringify(active));
  document.getElementById("note").value="";
  render();
 }
@@ -157,7 +160,7 @@ function stopHS(){
  const end=new Date();
  data.entries.unshift({start:active.start,end:end.toISOString(),note:active.note,profile:active.profile});
  data.audit.unshift({at:end.toISOString(),action:"Création HS",start:active.start,end:end.toISOString(),profile:active.profile});
- active=null;save();
+ active=null;localStorage.removeItem(ACTIVE_KEY);save();
 }
 function localDateKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function validateDay(){
@@ -217,7 +220,9 @@ function resetData(){
   active=null;render();
  }
 }
-window.addEventListener("online",render);window.addEventListener("offline",render);render();
+window.addEventListener("online",render);window.addEventListener("offline",render);
+window.addEventListener("pagehide",()=>{if(active)localStorage.setItem(ACTIVE_KEY,JSON.stringify(active));});
+render();
 </script>
 </body>
 </html>
