@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<title>Carnet HS V3.4.1</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827}
+header{background:#111827;color:#fff;padding:17px 14px;text-align:center;position:sticky;top:0;z-index:3}
+h1{margin:0;font-size:24px}main{max-width:760px;margin:auto;padding:12px}
+.card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 8px #0001}
+h2,h3{margin-top:0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-weight:700;margin:10px 0 5px}input,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px}
+textarea{min-height:65px}.status{text-align:center;padding:12px;border-radius:12px;background:#e5e7eb;font-weight:700}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}button{border:0;border-radius:13px;padding:16px;font-size:17px;font-weight:700;cursor:pointer}
+.start{background:#16a34a;color:#fff}.stop{background:#dc2626;color:#fff}.secondary{background:#e5e7eb}.blue{background:#2563eb;color:#fff}.danger{background:#fee2e2;color:#991b1b}
+.stat{background:#f9fafb;border-radius:12px;padding:13px;text-align:center}.stat b{display:block;font-size:24px;margin-top:5px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
+.small{font-size:12px;color:#6b7280}.ok{color:#15803d;font-weight:700}.warn{color:#b45309;font-weight:700}
+.profile{background:#f9fafb;border-radius:12px;padding:12px;line-height:1.7}.tag{display:inline-block;padding:5px 8px;border-radius:8px;background:#eef2ff;margin:2px;font-size:12px}
+.hidden{display:none}@media(max-width:560px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>🕐 Carnet HS V3.4.1</h1><div class="small" style="color:#d1d5db">Suivi personnel des heures supplémentaires</div></header>
+<main>
+
+<div class="card">
+<h2>👤 Mon profil</h2>
+<div id="profileView" class="profile"></div>
+<button class="secondary" style="width:100%;margin-top:12px" onclick="editProfile()">⚙️ Modifier mes informations</button>
+</div>
+
+<div id="profileEditor" class="card hidden">
+<h2>🪪 Identification</h2>
+<div class="grid">
+<div><label>ID salarié</label><input id="userId" placeholder="Votre identifiant"></div>
+<div><label>Agence d'intérim</label><input id="agency" placeholder="Nom de l'agence"></div>
+<div><label>Employeur</label><input id="employer" placeholder="Entreprise"></div>
+<div><label>Lieu de travail</label><input id="workplace" placeholder="Site / établissement"></div>
+</div>
+<label>Chef d'équipe</label><input id="manager" placeholder="Nom et prénom">
+<div class="buttons">
+<button class="blue" onclick="saveProfile()">💾 Enregistrer</button>
+<button class="secondary" onclick="cancelProfile()">Annuler</button>
+</div>
+<div class="small">Ces informations sont mémorisées sur le téléphone. Une modification n'altère pas les informations déjà enregistrées avec les anciennes HS.</div>
+</div>
+
+<div class="card">
+<div id="status" class="status">Aucune HS en cours</div>
+<div class="buttons">
+<button class="start" onclick="startHS()">▶ DÉBUT HS</button>
+<button class="stop" onclick="stopHS()">■ FIN HS</button>
+</div>
+<label>Motif / commentaire</label>
+<textarea id="note" placeholder="Ex. déchargement camion, inventaire, urgence..."></textarea>
+</div>
+
+<div class="card">
+<div class="grid">
+<div class="stat">Aujourd'hui<b id="dayTotal">0 h 00</b></div>
+<div class="stat">Ce mois<b id="monthTotal">0 h 00</b></div>
+</div>
+</div>
+
+<div class="card">
+<h3>👨‍🏭 Validation du chef d'équipe</h3>
+<div id="validation">Journée non validée</div>
+<button class="secondary" style="width:100%;margin-top:10px" onclick="validateDay()">👨‍🏭 VALIDER PAR LE CHEF D’ÉQUIPE</button><div class="small" style="margin-top:8px">La validation du chef d’équipe reste disponible à chaque journée terminée. Le chef indiqué dans le profil est enregistré avec la date et l’heure de validation, y compris lorsque la validation est effectuée depuis le compte du salarié.</div>
+</div>
+
+<div class="card">
+<h3>☁️ Sauvegarde</h3>
+<div id="backupStatus" class="small"></div>
+<div class="buttons">
+<button class="secondary" onclick="exportJSON()">💾 Exporter JSON</button>
+<button class="secondary" onclick="exportCSV()">📊 Export CSV</button>
+</div>
+<div class="buttons">
+<button class="secondary" onclick="document.getElementById('importFile').click()">📥 Restaurer un fichier</button>
+<button class="secondary" onclick="restoreBackup()">↩️ Dernière sauvegarde</button>
+</div>
+<input id="importFile" type="file" accept="application/json,.json" style="display:none" onchange="importJSONFile(this)">
+<div class="small" style="margin-top:10px"><b>Sauvegarde automatique :</b> une copie locale est créée à chaque enregistrement, avec conservation des 10 dernières versions. La synchronisation vers PC/cloud viendra ensuite.</div>
+</div>
+
+<div class="card">
+<button class="blue" style="width:100%" onclick="toggleHistory()">📋 HISTORIQUE</button>
+<div id="historyPanel" class="hidden" style="margin-top:12px">
+<div class="buttons">
+<button class="secondary" onclick="setHistoryFilter('day')">📅 Jour</button>
+<button class="secondary" onclick="setHistoryFilter('week')">📆 Semaine</button>
+<button class="secondary" onclick="setHistoryFilter('month')">🗓️ Mois</button>
+<button class="secondary" onclick="setHistoryFilter('all')">📊 Tout</button>
+</div>
+<div class="grid" style="margin-top:10px">
+<div class="stat">Période<b id="historyPeriod">—</b></div>
+<div class="stat">Total<b id="historyTotal">0 h 00</b></div>
+</div>
+<div class="small" id="historySummary" style="margin:10px 0"></div>
+<div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Sem.</th><th>Début</th><th>Fin</th><th>Durée</th><th>Contexte</th></tr></thead>
+<tbody id="history"></tbody></table></div>
+</div>
+</div>
+
+<div class="card">
+<button class="danger" style="width:100%" onclick="resetData()">⚠️ Effacer toutes les données</button>
+<div class="small" style="margin-top:8px">Fais une sauvegarde avant cette opération.</div>
+</div>
+</main>
+
+<script>
+const KEY="carnetHS_v3_4";
+const OLD_KEYS=["carnetHS_v3_3","carnetHS_v3_2"];
+const BACKUP_KEY="carnetHS_auto_backups_v1";
+const BACKUP_MAX=10;
+const ACTIVE_KEY="carnetHS_active_v1";
+let data;
+try{
+ const current=localStorage.getItem(KEY);
+ const legacy=OLD_KEYS.map(k=>localStorage.getItem(k)).find(Boolean);
+ data=JSON.parse(current||legacy||'{"profile":{"userId":"","agency":"","employer":"","workplace":"","manager":""},"entries":[],"validations":{},"audit":[]}');
+ localStorage.setItem(KEY,JSON.stringify(data));
+}catch(e){data={profile:{userId:"",agency:"",employer:"",workplace:"",manager:""},entries:[],validations:{},audit:[]}}
+let active=null;
+try{const savedActive=localStorage.getItem(ACTIVE_KEY);active=savedActive?JSON.parse(savedActive):null}catch(e){active=null}
+let historyOpen=false;
+let historyFilter="week";
+
+function latestBackup(){
+ try{
+  const backups=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");
+  return backups.length?backups[0]:null;
+ }catch(e){return null}
+}
+function autoBackup(){
+ try{
+  const backups=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");
+  backups.unshift({savedAt:new Date().toISOString(),data:JSON.parse(JSON.stringify(data))});
+  localStorage.setItem(BACKUP_KEY,JSON.stringify(backups.slice(0,BACKUP_MAX)));
+ }catch(e){console.error("Sauvegarde automatique impossible :",e)}
+}
+function save(){autoBackup();localStorage.setItem(KEY,JSON.stringify(data));render();}
+function val(id){return document.getElementById(id).value.trim()}
+function setv(id,v){document.getElementById(id).value=v||""}
+function profileOK(){return data.profile.userId&&data.profile.employer&&data.profile.manager}
+function editProfile(){
+ ["userId","agency","employer","workplace","manager"].forEach(k=>setv(k,data.profile[k]));
+ document.getElementById("profileEditor").classList.remove("hidden");
+}
+function cancelProfile(){document.getElementById("profileEditor").classList.add("hidden")}
+function saveProfile(){
+ const p={userId:val("userId"),agency:val("agency"),employer:val("employer"),workplace:val("workplace"),manager:val("manager")};
+ if(!p.userId||!p.employer||!p.manager){alert("Renseigne au minimum l'ID salarié, l'employeur et le chef d'équipe.");return}
+ data.profile=p;
+ data.audit.unshift({at:new Date().toISOString(),action:"Profil enregistré",profile:{...p}});
+ document.getElementById("profileEditor").classList.add("hidden");
+ save();
+}
+function startHS(){
+ if(!profileOK()){alert("Configure d'abord ton profil.");editProfile();return}
+ if(active){alert("Une HS est déjà en cours.");return}
+ active={start:new Date().toISOString(),note:val("note"),profile:{...data.profile}};
+ localStorage.setItem(ACTIVE_KEY,JSON.stringify(active));
+ document.getElementById("note").value="";
+ render();
+}
+function stopHS(){
+ if(!active){alert("Aucune HS en cours.");return}
+ const end=new Date();
+ data.entries.unshift({start:active.start,end:end.toISOString(),note:active.note,profile:active.profile});
+ data.audit.unshift({at:end.toISOString(),action:"Création HS",start:active.start,end:end.toISOString(),profile:active.profile});
+ active=null;localStorage.removeItem(ACTIVE_KEY);save();
+}
+function localDateKey(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function validateDay(){
+ if(active){alert("Termine d'abord l'HS en cours.");return}
+ if(!profileOK()){alert("Configure d'abord ton profil.");return}
+ const today=localDateKey(new Date());
+ if(data.validations[today]){alert("Cette journée est déjà validée.");return}
+ const validatedAt=new Date().toISOString();
+ data.validations[today]={validatedAt,manager:data.profile.manager,role:"Chef d’équipe"};
+ data.audit.unshift({at:validatedAt,action:"Validation chef d’équipe",date:today,manager:data.profile.manager,role:"Chef d’équipe"});
+ save();alert("Journée validée par le chef d’équipe : "+data.profile.manager+".");
+}
+function fmtDate(d){return new Intl.DateTimeFormat("fr-FR",{dateStyle:"short"}).format(d)}
+function fmtTime(d){return new Intl.DateTimeFormat("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(d)}
+function duration(ms){let m=Math.max(0,Math.round(ms/60000));return `${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")}`}
+function isoWeek(d){const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=x.getUTCDay()||7;x.setUTCDate(x.getUTCDate()+4-day);const y=new Date(Date.UTC(x.getUTCFullYear(),0,1));return Math.ceil((((x-y)/86400000)+1)/7)}
+function weekYear(d){const x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=x.getUTCDay()||7;x.setUTCDate(x.getUTCDate()+4-day);return x.getUTCFullYear()}
+function weekKey(d){return weekYear(d)+"-W"+String(isoWeek(d)).padStart(2,"0")}
+function entryDuration(e){return Math.max(0,new Date(e.end)-new Date(e.start))}
+function totals(){const now=new Date(),day=localDateKey(now),month=day.slice(0,7),wk=weekKey(now);let d=0,w=0,m=0;data.entries.forEach(e=>{let ms=entryDuration(e),ds=localDateKey(new Date(e.start));if(ds===day)d+=ms;if(weekKey(new Date(e.start))===wk)w+=ms;if(ds.slice(0,7)===month)m+=ms});return[d,w,m]}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+function toggleHistory(){historyOpen=!historyOpen;document.getElementById("historyPanel").classList.toggle("hidden",!historyOpen);if(historyOpen)renderHistory()}
+function setHistoryFilter(f){historyFilter=f;renderHistory()}
+function renderHistory(){
+ const panel=document.getElementById("historyPanel");if(!panel)return;
+ const now=new Date(),today=localDateKey(now),wk=weekKey(now),month=today.slice(0,7);
+ let rows=data.entries.slice().sort((a,b)=>new Date(b.start)-new Date(a.start));
+ if(historyFilter==='day')rows=rows.filter(e=>localDateKey(new Date(e.start))===today);
+ if(historyFilter==='week')rows=rows.filter(e=>weekKey(new Date(e.start))===wk);
+ if(historyFilter==='month')rows=rows.filter(e=>localDateKey(new Date(e.start)).slice(0,7)===month);
+ let total=rows.reduce((a,e)=>a+entryDuration(e),0);
+ const labels={day:"Aujourd'hui",week:`Semaine ${isoWeek(now)} (${weekYear(now)})`,month:"Mois en cours",all:"Toutes les HS"};
+ document.getElementById("historyPeriod").textContent=labels[historyFilter];
+ document.getElementById("historyTotal").textContent=duration(total);
+ document.getElementById("historySummary").textContent=`${rows.length} période(s) d'HS — Semaine actuelle : S${isoWeek(now)} — Total semaine : ${duration(data.entries.filter(e=>weekKey(new Date(e.start))===wk).reduce((a,e)=>a+entryDuration(e),0))}`;
+ document.getElementById("history").innerHTML=rows.map(e=>{const q=e.profile||data.profile;const d=new Date(e.start);return `<tr><td>${fmtDate(d)}</td><td>S${isoWeek(d)}</td><td>${fmtTime(d)}</td><td>${fmtTime(new Date(e.end))}</td><td><b>${duration(entryDuration(e))}</b></td><td>${escapeHtml(e.note||"")}<br><span class="tag">${escapeHtml(q.agency||"")}</span><span class="tag">${escapeHtml(q.employer||"")}</span><span class="tag">${escapeHtml(q.workplace||"")}</span><br><span class="small">Chef : ${escapeHtml(q.manager||"")}</span></td></tr>`}).join("") || `<tr><td colspan="6" class="small">Aucune heure supplémentaire sur cette période.</td></tr>`;
+}
+function render(){
+ const p=data.profile;
+ document.getElementById("profileView").innerHTML=`<b>ID :</b> ${escapeHtml(p.userId||"Non renseigné")}<br><b>Agence :</b> ${escapeHtml(p.agency||"Non renseignée")}<br><b>Employeur :</b> ${escapeHtml(p.employer||"Non renseigné")}<br><b>Lieu :</b> ${escapeHtml(p.workplace||"Non renseigné")}<br><b>Chef d'équipe :</b> ${escapeHtml(p.manager||"Non renseigné")}`;
+ document.getElementById("status").textContent=active?`HS EN COURS depuis ${fmtTime(new Date(active.start))}`:"Aucune HS en cours";
+ const [d,w,m]=totals();document.getElementById("dayTotal").textContent=duration(d);document.getElementById("monthTotal").textContent=duration(m);
+ const today=localDateKey(new Date()),v=data.validations[today];
+ document.getElementById("validation").innerHTML=v?`<span class="ok">🔒 Journée validée</span><br>Chef : <b>${escapeHtml(v.manager)}</b><br><span class="small">${fmtDate(new Date(v.validatedAt))} à ${fmtTime(new Date(v.validatedAt))}</span>`:"Journée non validée";
+ const lb=latestBackup();
+ document.getElementById("backupStatus").innerHTML=lb?`<span class="ok">🟢 Sauvegarde automatique active</span> — dernière copie : ${fmtDate(new Date(lb.savedAt))} à ${fmtTime(new Date(lb.savedAt))} — ${JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]").length} version(s) conservée(s).`:'<span class="warn">🟠 Aucune sauvegarde automatique encore créée</span>';
+ if(historyOpen)renderHistory();
+}
+function exportJSON(){
+ const out={...data,exported_at:new Date().toISOString(),exported_at_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"full",timeStyle:"medium"}).format(new Date())};
+ out.entries=(data.entries||[]).map(e=>({...e,start_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.start)),end_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.end))}));
+ out.audit=(data.audit||[]).map(a=>({...a,at_local:a.at?new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(a.at)):undefined}));
+ download("carnet_HS_sauvegarde.json",new Blob([JSON.stringify(out,null,2)],{type:"application/json"}))
+}
+function exportCSV(){let csv="ID salarié;Agence;Employeur;Lieu;Chef d'équipe;Date;Début;Fin;Durée;Motif\n";data.entries.slice().reverse().forEach(e=>{let p=e.profile||data.profile;csv+=`"${p.userId}";"${p.agency}";"${p.employer}";"${p.workplace}";"${p.manager}";"${fmtDate(new Date(e.start))}";"${fmtTime(new Date(e.start))}";"${fmtTime(new Date(e.end))}";"${duration(new Date(e.end)-new Date(e.start))}";"${(e.note||"").replaceAll('"','""')}"\n`});download("carnet_HS.csv",new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}))}
+function download(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function resetData(){
+ if(!confirm("Effacer TOUTES les données ? Une sauvegarde automatique sera conservée avant l'effacement."))return;
+ autoBackup();
+ const emptyData={profile:{userId:"",agency:"",employer:"",workplace:"",manager:""},entries:[],validations:{},audit:[]};
+ data=emptyData;
+ active=null;
+ historyOpen=false;
+ OLD_KEYS.forEach(k=>localStorage.removeItem(k));
+ localStorage.removeItem(ACTIVE_KEY);
+ localStorage.setItem(KEY,JSON.stringify(data));
+ document.getElementById("note").value="";
+ document.getElementById("profileEditor").classList.add("hidden");
+ document.getElementById("historyPanel").classList.add("hidden");
+ ["userId","agency","employer","workplace","manager"].forEach(k=>setv(k,""));
+ render();
+}
+window.addEventListener("online",render);window.addEventListener("offline",render);
+window.addEventListener("pagehide",()=>{if(active)localStorage.setItem(ACTIVE_KEY,JSON.stringify(active));});
+render();
+</script>
+</body>
+</html>
