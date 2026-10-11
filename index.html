@@ -130,7 +130,20 @@ try{const savedActive=localStorage.getItem(ACTIVE_KEY);active=savedActive?JSON.p
 let historyOpen=false;
 let historyFilter="week";
 
-function save(){localStorage.setItem(KEY,JSON.stringify(data));render();}
+function latestBackup(){
+ try{
+  const backups=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");
+  return backups.length?backups[0]:null;
+ }catch(e){return null}
+}
+function autoBackup(){
+ try{
+  const backups=JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]");
+  backups.unshift({savedAt:new Date().toISOString(),data:JSON.parse(JSON.stringify(data))});
+  localStorage.setItem(BACKUP_KEY,JSON.stringify(backups.slice(0,BACKUP_MAX)));
+ }catch(e){console.error("Sauvegarde automatique impossible :",e)}
+}
+function save(){autoBackup();localStorage.setItem(KEY,JSON.stringify(data));render();}
 function val(id){return document.getElementById(id).value.trim()}
 function setv(id,v){document.getElementById(id).value=v||""}
 function profileOK(){return data.profile.userId&&data.profile.employer&&data.profile.manager}
@@ -218,12 +231,20 @@ function exportJSON(){
 function exportCSV(){let csv="ID salarié;Agence;Employeur;Lieu;Chef d'équipe;Date;Début;Fin;Durée;Motif\n";data.entries.slice().reverse().forEach(e=>{let p=e.profile||data.profile;csv+=`"${p.userId}";"${p.agency}";"${p.employer}";"${p.workplace}";"${p.manager}";"${fmtDate(new Date(e.start))}";"${fmtTime(new Date(e.start))}";"${fmtTime(new Date(e.end))}";"${duration(new Date(e.end)-new Date(e.start))}";"${(e.note||"").replaceAll('"','""')}"\n`});download("carnet_HS.csv",new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}))}
 function download(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function resetData(){
- if(confirm("Effacer TOUTES les données ? Une sauvegarde automatique sera conservée avant l'effacement.")){
-  autoBackup();
-  localStorage.removeItem(KEY);
-  data={profile:{userId:"",agency:"",employer:"",workplace:"",manager:""},entries:[],validations:{},audit:[]};
-  active=null;render();
- }
+ if(!confirm("Effacer TOUTES les données ? Une sauvegarde automatique sera conservée avant l'effacement."))return;
+ autoBackup();
+ const emptyData={profile:{userId:"",agency:"",employer:"",workplace:"",manager:""},entries:[],validations:{},audit:[]};
+ data=emptyData;
+ active=null;
+ historyOpen=false;
+ OLD_KEYS.forEach(k=>localStorage.removeItem(k));
+ localStorage.removeItem(ACTIVE_KEY);
+ localStorage.setItem(KEY,JSON.stringify(data));
+ document.getElementById("note").value="";
+ document.getElementById("profileEditor").classList.add("hidden");
+ document.getElementById("historyPanel").classList.add("hidden");
+ ["userId","agency","employer","workplace","manager"].forEach(k=>setv(k,""));
+ render();
 }
 window.addEventListener("online",render);window.addEventListener("offline",render);
 window.addEventListener("pagehide",()=>{if(active)localStorage.setItem(ACTIVE_KEY,JSON.stringify(active));});
