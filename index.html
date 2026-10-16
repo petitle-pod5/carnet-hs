@@ -271,11 +271,36 @@ function importJSONFile(input){
  reader.onerror=function(){alert("Impossible de lire le fichier sélectionné.");input.value=""};
  reader.readAsText(file);
 }
-function exportJSON(){
- const out={...data,exported_at:new Date().toISOString(),exported_at_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"full",timeStyle:"medium"}).format(new Date())};
+async function exportJSON(){
+ const now=new Date(),wk=weekKey(now);
+ const out={...data,exported_at:now.toISOString(),exported_at_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"full",timeStyle:"medium"}).format(now)};
  out.entries=(data.entries||[]).map(e=>({...e,start_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.start)),end_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.end))}));
  out.audit=(data.audit||[]).map(a=>({...a,at_local:a.at?new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(a.at)):undefined}));
- download("carnet_HS_sauvegarde.json",new Blob([JSON.stringify(out,null,2)],{type:"application/json"}))
+ const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
+ const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,"0")+String(now.getDate()).padStart(2,"0")+"_"+String(now.getHours()).padStart(2,"0")+String(now.getMinutes()).padStart(2,"0")+String(now.getSeconds()).padStart(2,"0");
+ const filename="carnet_HS_"+wk+"_"+stamp+".json";
+ const organize=confirm("Souhaites-tu classer cette sauvegarde dans un dossier par semaine ISO ?\\n\\nOui : choisir un dossier de destination ; Carnet_HS puis "+wk+" seront créés dedans.\\nNon : téléchargement classique.");
+ if(organize){
+  if(window.showDirectoryPicker){
+   try{
+    const root=await window.showDirectoryPicker({mode:"readwrite"});
+    const appFolder=await root.getDirectoryHandle("Carnet_HS",{create:true});
+    const weekFolder=await appFolder.getDirectoryHandle(wk,{create:true});
+    const fileHandle=await weekFolder.getFileHandle(filename,{create:true});
+    const writable=await fileHandle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    alert("Sauvegarde enregistrée dans Carnet_HS/"+wk+"/"+filename);
+    return;
+   }catch(e){
+    if(e&&e.name==="AbortError")return;
+    alert("La création du dossier n'a pas abouti dans ce navigateur. La sauvegarde sera proposée en téléchargement classique.");
+   }
+  }else{
+   alert("Ce navigateur ne permet pas la création de dossiers depuis Carnet HS. La sauvegarde sera proposée en téléchargement classique.");
+  }
+ }
+ download(filename,blob);
 }
 function exportCSV(){let csv="ID salarié;Agence;Employeur;Lieu;Chef d'équipe;Date;Début;Fin;Durée;Motif\n";data.entries.slice().reverse().forEach(e=>{let p=e.profile||data.profile;csv+=`"${p.userId}";"${p.agency}";"${p.employer}";"${p.workplace}";"${p.manager}";"${fmtDate(new Date(e.start))}";"${fmtTime(new Date(e.start))}";"${fmtTime(new Date(e.end))}";"${duration(new Date(e.end)-new Date(e.start))}";"${(e.note||"").replaceAll('"','""')}"\n`});download("carnet_HS.csv",new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}))}
 function download(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
