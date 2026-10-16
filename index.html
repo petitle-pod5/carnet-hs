@@ -222,6 +222,55 @@ function render(){
  document.getElementById("backupStatus").innerHTML=lb?`<span class="ok">🟢 Sauvegarde automatique active</span> — dernière copie : ${fmtDate(new Date(lb.savedAt))} à ${fmtTime(new Date(lb.savedAt))} — ${JSON.parse(localStorage.getItem(BACKUP_KEY)||"[]").length} version(s) conservée(s).`:'<span class="warn">🟠 Aucune sauvegarde automatique encore créée</span>';
  if(historyOpen)renderHistory();
 }
+function restoreBackup(){
+ const backup=latestBackup();
+ if(!backup||!backup.data){alert("Aucune sauvegarde exploitable n'est disponible.");return}
+ if(!confirm("Restaurer la dernière sauvegarde ? Les données actuellement affichées seront remplacées."))return;
+ autoBackup();
+ try{
+  const restored=JSON.parse(JSON.stringify(backup.data));
+  if(!restored.profile||!Array.isArray(restored.entries)||!restored.validations||!Array.isArray(restored.audit)){
+   alert("La sauvegarde est incomplète ou invalide.");return;
+  }
+  data=restored;
+  localStorage.setItem(KEY,JSON.stringify(data));
+  active=null;
+  localStorage.removeItem(ACTIVE_KEY);
+  render();
+  if(historyOpen)renderHistory();
+  alert("Dernière sauvegarde restaurée.");
+ }catch(e){alert("Impossible de restaurer cette sauvegarde : "+e.message)}
+}
+function importJSONFile(input){
+ const file=input&&input.files&&input.files[0];
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=function(){
+  try{
+   const imported=JSON.parse(String(reader.result||""));
+   if(!imported||typeof imported!=="object"||!imported.profile||!Array.isArray(imported.entries)||!imported.validations||typeof imported.validations!=="object"||!Array.isArray(imported.audit)){
+    alert("Fichier invalide : ce fichier ne semble pas être une sauvegarde Carnet HS.");return;
+   }
+   if(!confirm("Importer cette sauvegarde ? Les données actuellement affichées seront remplacées."))return;
+   data={
+    profile:{userId:String(imported.profile.userId||""),agency:String(imported.profile.agency||""),employer:String(imported.profile.employer||""),workplace:String(imported.profile.workplace||""),manager:String(imported.profile.manager||"")},
+    entries:imported.entries,
+    validations:imported.validations,
+    audit:imported.audit
+   };
+   autoBackup();
+   localStorage.setItem(KEY,JSON.stringify(data));
+   active=null;
+   localStorage.removeItem(ACTIVE_KEY);
+   render();
+   if(historyOpen)renderHistory();
+   alert("Sauvegarde importée avec succès.");
+  }catch(e){alert("Import impossible : le fichier JSON est invalide ou illisible.")}
+  finally{input.value=""}
+ };
+ reader.onerror=function(){alert("Impossible de lire le fichier sélectionné.");input.value=""};
+ reader.readAsText(file);
+}
 function exportJSON(){
  const out={...data,exported_at:new Date().toISOString(),exported_at_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"full",timeStyle:"medium"}).format(new Date())};
  out.entries=(data.entries||[]).map(e=>({...e,start_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.start)),end_local:new Intl.DateTimeFormat("fr-FR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(e.end))}));
