@@ -279,7 +279,7 @@ async function exportJSON(){
  const blob=new Blob([JSON.stringify(out,null,2)],{type:"application/json"});
  const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,"0")+String(now.getDate()).padStart(2,"0")+"_"+String(now.getHours()).padStart(2,"0")+String(now.getMinutes()).padStart(2,"0")+String(now.getSeconds()).padStart(2,"0");
  const filename="carnet_HS_"+wk+"_"+stamp+".json";
- const organize=confirm("Souhaites-tu classer cette sauvegarde dans un dossier par semaine ISO ?\\n\\nOui : choisir un dossier de destination ; Carnet_HS puis "+wk+" seront créés dedans.\\nNon : téléchargement classique.");
+ const organize=confirm("Souhaites-tu classer cette sauvegarde dans un dossier par semaine ISO ?\n\nOui : choisir un dossier de destination ; Carnet_HS puis "+wk+" seront créés dedans.\nNon : téléchargement classique.");
  if(organize){
   if(window.showDirectoryPicker){
    try{
