@@ -228,6 +228,8 @@ function resetData(){
 window.addEventListener("online",render);window.addEventListener("offline",render);
 window.addEventListener("pagehide",()=>{if(active)localStorage.setItem(ACTIVE_KEY,JSON.stringify(active));});
 render();
+// Première utilisation : ouvrir directement la fiche vierge si aucun profil n’est configuré.
+if(!profileOK()) editProfile();
 </script>
 </body>
 </html>
